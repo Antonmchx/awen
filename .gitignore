@@ -1,0 +1,13 @@
+.DS_Store
+.build/
+dist/
+!dist/.gitkeep
+
+# Local exported/imported playlist files
+*.json
+!Package.swift
+
+# SwiftPM/Xcode user files if they appear later
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
