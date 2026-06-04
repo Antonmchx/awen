@@ -280,72 +280,85 @@ struct PlaylistsWindowView: View {
     @State private var isPlaylistItemsExpanded = true
     @State private var showingImporter = false
     @State private var exportDocument: PlaylistTransferDocument?
+    @State private var isCreatePlaylistPresented = false
+    @State private var isAddPlaylistItemPresented = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Playlists")
-                    .font(.system(size: 18, weight: .semibold))
-
                 HStack(spacing: 10) {
-                    TextField("New playlist", text: $appState.draftPlaylistName)
-                        .textFieldStyle(.roundedBorder)
-
                     Button("Create") {
-                        appState.createPlaylist()
+                        isCreatePlaylistPresented = true
                     }
+
+                    Button("Import") {
+                        showingImporter = true
+                    }
+
+                    Button("Export") {
+                        guard let selectedPlaylist = appState.selectedPlaylist else { return }
+                        exportDocument = PlaylistTransferDocument(playlist: selectedPlaylist)
+                    }
+                    .disabled(appState.selectedPlaylist == nil)
                 }
+                .buttonStyle(.bordered)
+                .padding(.bottom, 12)
 
                 if appState.playlists.isEmpty {
                     PlaceholderCard(text: "No playlists yet.")
                 } else {
-                    HStack(spacing: 10) {
-                        Button("Import") {
-                            showingImporter = true
-                        }
-
-                        Button("Export") {
-                            guard let selectedPlaylist = appState.selectedPlaylist else { return }
-                            exportDocument = PlaylistTransferDocument(playlist: selectedPlaylist)
-                        }
-                        .disabled(appState.selectedPlaylist == nil)
-                    }
-                    .buttonStyle(.bordered)
-
-                    Picker("Playlist", selection: Binding(
-                        get: { appState.selectedPlaylistID ?? appState.playlists.first?.id },
-                        set: { appState.selectPlaylist($0) }
-                    )) {
+                    Menu {
                         ForEach(appState.playlists) { playlist in
-                            Text(playlist.name).tag(Optional(playlist.id))
+                            Button(playlist.name) {
+                                appState.selectPlaylist(playlist.id)
+                            }
                         }
+                    } label: {
+                        Text(appState.selectedPlaylist?.name ?? "Select Playlist")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
                     }
-                    .pickerStyle(.menu)
+                    .menuStyle(.borderlessButton)
 
                     HStack(spacing: 10) {
-                        Button("Add Current URL") {
-                            appState.addCurrentURLToSelectedPlaylist()
+                        PlainIconButton(systemName: "play.fill") {
+                            appState.playSelectedPlaylistNow()
                         }
 
-                        Button("Play Now") {
-                            appState.playSelectedPlaylistNow()
+                        PlainIconButton(systemName: "backward.fill") {
+                            appState.playPreviousPlaylistItem()
                         }
 
                         IconActionButton(systemName: "forward.fill") {
                             appState.playNextPlaylistItem()
                         }
 
+                        PlainIconButton(systemName: "plus") {
+                            isAddPlaylistItemPresented = true
+                        }
+
                         if let selectedPlaylist = appState.selectedPlaylist {
-                            Button("Delete List") {
+                            PlainIconButton(systemName: "trash") {
                                 appState.deletePlaylist(selectedPlaylist.id)
                             }
                         }
                     }
-                    .buttonStyle(.bordered)
+                    .padding(.bottom, 10)
 
                     HStack(spacing: 10) {
-                        Text("Seconds")
-                            .font(.system(size: 12))
+                        Toggle("Switch Items", isOn: Binding(
+                            get: { appState.isAutoplayEnabled },
+                            set: { appState.setAutoplayEnabled($0) }
+                        ))
+                        .toggleStyle(.switch)
+                        .frame(width: 128)
+
+                        Image(systemName: "timer")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.secondary)
 
                         TextField("20", text: $appState.playlistIntervalInput)
                             .textFieldStyle(.roundedBorder)
@@ -357,13 +370,6 @@ struct PlaylistsWindowView: View {
                         Button("Set") {
                             appState.applySelectedPlaylistIntervalInput()
                         }
-
-                        Toggle("Autoplay", isOn: Binding(
-                            get: { appState.isAutoplayEnabled },
-                            set: { appState.setAutoplayEnabled($0) }
-                        ))
-                        .toggleStyle(.switch)
-                        .frame(width: 110)
                     }
 
                     if let selectedPlaylist = appState.selectedPlaylist {
@@ -420,6 +426,28 @@ struct PlaylistsWindowView: View {
                 }
             }
         }
+        .sheet(isPresented: $isCreatePlaylistPresented) {
+            CreatePlaylistSheet(draftPlaylistName: $appState.draftPlaylistName) {
+                appState.createPlaylist()
+            }
+        }
+        .sheet(isPresented: $isAddPlaylistItemPresented) {
+            AddPlaylistItemSheet(
+                currentTitle: appState.currentArtworkTitle,
+                currentURL: currentRemoteURL
+            ) { title, url, useCurrent in
+                if useCurrent {
+                    guard let currentURL = currentRemoteURL else {
+                        appState.statusMessage = "Current artwork is not a remote URL."
+                        return false
+                    }
+                    let finalTitle = title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? appState.currentArtworkTitle : title
+                    return appState.addPlaylistItem(title: finalTitle, urlString: currentURL)
+                }
+
+                return appState.addPlaylistItem(title: title, urlString: url)
+            }
+        }
         .fileImporter(
             isPresented: $showingImporter,
             allowedContentTypes: [.json],
@@ -449,6 +477,123 @@ struct PlaylistsWindowView: View {
                 appState.statusMessage = "Playlist export failed: \(error.localizedDescription)"
             }
             exportDocument = nil
+        }
+    }
+
+    private var currentRemoteURL: String? {
+        guard case .remote(let url) = appState.currentSource else { return nil }
+        return url.absoluteString
+    }
+}
+
+private struct CreatePlaylistSheet: View {
+    @Binding var draftPlaylistName: String
+    let onCreate: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var isFieldFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Create Playlist")
+                .font(.system(size: 18, weight: .semibold))
+
+            TextField("New playlist", text: $draftPlaylistName)
+                .textFieldStyle(.roundedBorder)
+                .focused($isFieldFocused)
+                .onSubmit {
+                    onCreate()
+                    dismiss()
+                }
+
+            HStack {
+                Spacer()
+
+                Button("Cancel") {
+                    dismiss()
+                }
+
+                Button("Create") {
+                    onCreate()
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 360)
+        .onAppear {
+            isFieldFocused = true
+        }
+    }
+}
+
+private struct AddPlaylistItemSheet: View {
+    let currentTitle: String
+    let currentURL: String?
+    let onAdd: (String, String, Bool) -> Bool
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var draftTitle: String = ""
+    @State private var draftURL: String = ""
+    @State private var useCurrentArtwork = true
+    @FocusState private var isURLFieldFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Add Playlist Item")
+                .font(.system(size: 18, weight: .semibold))
+
+            if currentURL != nil {
+                Toggle("Use current artwork", isOn: $useCurrentArtwork)
+                    .toggleStyle(.switch)
+            }
+
+            TextField("Title", text: $draftTitle)
+                .textFieldStyle(.roundedBorder)
+
+            if !(useCurrentArtwork && currentURL != nil) {
+                TextField("https://example.com/artwork", text: $draftURL)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($isURLFieldFocused)
+            }
+
+            if useCurrentArtwork, let currentURL {
+                Text(currentURL)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            HStack {
+                Spacer()
+
+                Button("Cancel") {
+                    dismiss()
+                }
+
+                Button("Add") {
+                    if onAdd(draftTitle, draftURL, useCurrentArtwork) {
+                        dismiss()
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(20)
+        .frame(width: 420)
+        .onAppear {
+            draftTitle = useCurrentArtwork ? currentTitle : ""
+            draftURL = ""
+            isURLFieldFocused = currentURL == nil
+        }
+        .onChange(of: useCurrentArtwork) { _, useCurrent in
+            if useCurrent {
+                draftTitle = currentTitle
+            } else {
+                draftURL = ""
+                isURLFieldFocused = true
+            }
         }
     }
 }

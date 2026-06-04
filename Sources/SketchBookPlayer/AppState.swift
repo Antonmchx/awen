@@ -289,6 +289,39 @@ final class AppState: ObservableObject {
         }
     }
 
+    func addPlaylistItem(title: String, urlString: String) -> Bool {
+        guard let selectedPlaylistID,
+              let playlistIndex = playlists.firstIndex(where: { $0.id == selectedPlaylistID }) else {
+            statusMessage = "Create or select a playlist first."
+            return false
+        }
+
+        let trimmedURL = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = normalizedRemoteURL(from: trimmedURL) else {
+            statusMessage = "Use a valid http or https URL."
+            return false
+        }
+
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let finalTitle = trimmedTitle.isEmpty ? suggestedTitle(for: url) : trimmedTitle
+        let normalized = url.absoluteString
+
+        if playlists[playlistIndex].items.contains(where: { $0.urlString == normalized }) {
+            statusMessage = "This URL is already in the selected playlist."
+            return false
+        }
+
+        playlists[playlistIndex].items.append(
+            SavedArtworkLink(title: finalTitle, urlString: normalized)
+        )
+        persistLibrary()
+        statusMessage = "Added to playlist."
+        if isAutoplayEnabled {
+            restartAutoplayIfPossible()
+        }
+        return true
+    }
+
     func removeItemFromSelectedPlaylist(_ itemID: UUID) {
         guard let selectedPlaylistID,
               let playlistIndex = playlists.firstIndex(where: { $0.id == selectedPlaylistID }) else {
@@ -362,6 +395,20 @@ final class AppState: ObservableObject {
         }
 
         currentPlaylistIndex = (currentPlaylistIndex + 1) % playlist.items.count
+        playPlaylistItem(at: currentPlaylistIndex, in: playlist)
+    }
+
+    func playPreviousPlaylistItem() {
+        guard let playlist = selectedPlaylist else {
+            statusMessage = "Select a playlist first."
+            return
+        }
+        guard !playlist.items.isEmpty else {
+            statusMessage = "The selected playlist is empty."
+            return
+        }
+
+        currentPlaylistIndex = (currentPlaylistIndex - 1 + playlist.items.count) % playlist.items.count
         playPlaylistItem(at: currentPlaylistIndex, in: playlist)
     }
 
