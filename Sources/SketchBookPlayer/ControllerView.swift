@@ -848,6 +848,8 @@ private struct SettingsSheet: View {
         }
         .padding(20)
         .frame(width: 280)
+        .background(PanelBackgroundView(opacity: controlPanelOpacity, mode: panelBackgroundMode))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
 

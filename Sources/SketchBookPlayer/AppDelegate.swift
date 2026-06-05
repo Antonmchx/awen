@@ -38,7 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let controlWindow = NSWindow(
             contentRect: NSRect(x: 220, y: 260, width: 420, height: 320),
-            styleMask: [.titled, .closable, .miniaturizable],
+            styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -131,7 +131,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let favoritesWindow = NSWindow(
             contentRect: NSRect(x: 680, y: 300, width: 380, height: 420),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -158,7 +158,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let playlistsWindow = NSWindow(
             contentRect: NSRect(x: 720, y: 260, width: 440, height: 560),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
