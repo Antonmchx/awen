@@ -58,7 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         appState.$controlPanelOpacity
             .sink { [weak self] opacity in
-                self?.controlWindowController?.window?.alphaValue = CGFloat(opacity)
+                self?.applyPanelOpacity(opacity)
             }
             .store(in: &cancellables)
 
@@ -115,6 +115,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.setFrame(frame, display: true, animate: animated)
     }
 
+    private func applyPanelOpacity(_ opacity: Double) {
+        let alpha = CGFloat(opacity)
+        controlWindowController?.window?.alphaValue = alpha
+        favoritesWindowController?.window?.alphaValue = alpha
+        playlistsWindowController?.window?.alphaValue = alpha
+    }
+
     private func showFavoritesWindow() {
         if let favoritesWindowController {
             favoritesWindowController.showWindow(nil)
@@ -130,6 +137,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         favoritesWindow.title = "Favorites"
         favoritesWindow.isMovableByWindowBackground = true
+        favoritesWindow.isOpaque = false
+        favoritesWindow.backgroundColor = .clear
+        favoritesWindow.alphaValue = CGFloat(appState.controlPanelOpacity)
         favoritesWindow.contentView = NSHostingView(rootView: FavoritesWindowView(appState: appState))
 
         let controller = NSWindowController(window: favoritesWindow)
@@ -152,6 +162,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         playlistsWindow.title = "Playlists"
         playlistsWindow.isMovableByWindowBackground = true
+        playlistsWindow.isOpaque = false
+        playlistsWindow.backgroundColor = .clear
+        playlistsWindow.alphaValue = CGFloat(appState.controlPanelOpacity)
         playlistsWindow.contentView = NSHostingView(rootView: PlaylistsWindowView(appState: appState))
 
         let controller = NSWindowController(window: playlistsWindow)

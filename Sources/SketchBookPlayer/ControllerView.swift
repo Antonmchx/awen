@@ -258,6 +258,7 @@ struct FavoritesWindowView: View {
             .padding(16)
         }
         .frame(minWidth: 360, minHeight: 220)
+        .background(panelBackground)
         .sheet(item: $editingTarget) { target in
             LinkEditorSheet(
                 title: target.title,
@@ -272,6 +273,18 @@ struct FavoritesWindowView: View {
             }
         }
     }
+
+    private var panelBackground: some View {
+        LinearGradient(
+            colors: [
+                Color(nsColor: .windowBackgroundColor).opacity(appState.controlPanelOpacity),
+                Color(nsColor: .underPageBackgroundColor).opacity(appState.controlPanelOpacity * 0.96)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
 }
 
 struct PlaylistsWindowView: View {
@@ -413,6 +426,7 @@ struct PlaylistsWindowView: View {
             .padding(16)
         }
         .frame(minWidth: 420, minHeight: 320)
+        .background(panelBackground)
         .sheet(item: $editingTarget) { target in
             LinkEditorSheet(
                 title: target.title,
@@ -483,6 +497,17 @@ struct PlaylistsWindowView: View {
     private var currentRemoteURL: String? {
         guard case .remote(let url) = appState.currentSource else { return nil }
         return url.absoluteString
+    }
+
+    private var panelBackground: some View {
+        LinearGradient(
+            colors: [
+                Color(nsColor: .windowBackgroundColor).opacity(appState.controlPanelOpacity),
+                Color(nsColor: .underPageBackgroundColor).opacity(appState.controlPanelOpacity * 0.96)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 }
 
