@@ -86,16 +86,8 @@ struct ControllerView: View {
             }
         }
         .frame(width: 420)
-        .background(
-            LinearGradient(
-                colors: [
-                    Color(nsColor: .windowBackgroundColor).opacity(appState.controlPanelOpacity),
-                    Color(nsColor: .underPageBackgroundColor).opacity(appState.controlPanelOpacity * 0.96)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+        .background(PanelBackgroundView(opacity: appState.controlPanelOpacity, mode: appState.panelBackgroundMode))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .fileImporter(
             isPresented: $showingImporter,
             allowedContentTypes: [.html],
@@ -118,6 +110,10 @@ struct ControllerView: View {
                 playerFrameStyle: Binding(
                     get: { appState.playerFrameStyle },
                     set: { appState.setPlayerFrameStyle($0) }
+                ),
+                panelBackgroundMode: Binding(
+                    get: { appState.panelBackgroundMode },
+                    set: { appState.setPanelBackgroundMode($0) }
                 ),
                 controlPanelOpacity: Binding(
                     get: { appState.controlPanelOpacity },
@@ -241,6 +237,7 @@ struct FavoritesWindowView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Favorites")
                     .font(.system(size: 18, weight: .semibold))
+                    .padding(.bottom, 2)
 
                 if appState.favorites.isEmpty {
                     PlaceholderCard(text: "No favorites yet.")
@@ -258,7 +255,8 @@ struct FavoritesWindowView: View {
             .padding(16)
         }
         .frame(minWidth: 360, minHeight: 220)
-        .background(panelBackground)
+        .background(PanelBackgroundView(opacity: appState.controlPanelOpacity, mode: appState.panelBackgroundMode))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .sheet(item: $editingTarget) { target in
             LinkEditorSheet(
                 title: target.title,
@@ -272,17 +270,6 @@ struct FavoritesWindowView: View {
                 }
             }
         }
-    }
-
-    private var panelBackground: some View {
-        LinearGradient(
-            colors: [
-                Color(nsColor: .windowBackgroundColor).opacity(appState.controlPanelOpacity),
-                Color(nsColor: .underPageBackgroundColor).opacity(appState.controlPanelOpacity * 0.96)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
     }
 
 }
@@ -299,6 +286,10 @@ struct PlaylistsWindowView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
+                Text("Playlists")
+                    .font(.system(size: 18, weight: .semibold))
+                    .padding(.bottom, 2)
+
                 HStack(spacing: 10) {
                     Button("Create") {
                         isCreatePlaylistPresented = true
@@ -374,8 +365,18 @@ struct PlaylistsWindowView: View {
                             .foregroundStyle(.secondary)
 
                         TextField("20", text: $appState.playlistIntervalInput)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.plain)
                             .frame(width: 64)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(intervalFieldBackgroundColor)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .stroke(intervalFieldBorderColor, lineWidth: 1)
+                            )
                             .onSubmit {
                                 appState.applySelectedPlaylistIntervalInput()
                             }
@@ -426,7 +427,8 @@ struct PlaylistsWindowView: View {
             .padding(16)
         }
         .frame(minWidth: 420, minHeight: 320)
-        .background(panelBackground)
+        .background(PanelBackgroundView(opacity: appState.controlPanelOpacity, mode: appState.panelBackgroundMode))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .sheet(item: $editingTarget) { target in
             LinkEditorSheet(
                 title: target.title,
@@ -499,16 +501,24 @@ struct PlaylistsWindowView: View {
         return url.absoluteString
     }
 
-    private var panelBackground: some View {
-        LinearGradient(
-            colors: [
-                Color(nsColor: .windowBackgroundColor).opacity(appState.controlPanelOpacity),
-                Color(nsColor: .underPageBackgroundColor).opacity(appState.controlPanelOpacity * 0.96)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+    private var intervalFieldBackgroundColor: Color {
+        switch appState.panelBackgroundMode {
+        case .standard:
+            return Color.black.opacity(0.05)
+        case .glass:
+            return Color.white.opacity(0.07)
+        }
     }
+
+    private var intervalFieldBorderColor: Color {
+        switch appState.panelBackgroundMode {
+        case .standard:
+            return Color.black.opacity(0.08)
+        case .glass:
+            return Color.white.opacity(0.14)
+        }
+    }
+
 }
 
 private struct CreatePlaylistSheet: View {
@@ -785,6 +795,7 @@ private struct LinkEditorSheet: View {
 private struct SettingsSheet: View {
     @Binding var isPinnedToTop: Bool
     @Binding var playerFrameStyle: PlayerFrameStyle
+    @Binding var panelBackgroundMode: PanelBackgroundMode
     @Binding var controlPanelOpacity: Double
     @Environment(\.dismiss) private var dismiss
 
@@ -797,13 +808,17 @@ private struct SettingsSheet: View {
                 .toggleStyle(.switch)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Frame")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.secondary)
-
                 Picker("Frame", selection: $playerFrameStyle) {
                     Text("Shell").tag(PlayerFrameStyle.shell)
                     Text("2 mm").tag(PlayerFrameStyle.thin)
+                }
+                .pickerStyle(.segmented)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Picker("Background", selection: $panelBackgroundMode) {
+                    Text("Standard").tag(PanelBackgroundMode.standard)
+                    Text("Glass").tag(PanelBackgroundMode.glass)
                 }
                 .pickerStyle(.segmented)
             }
@@ -833,6 +848,38 @@ private struct SettingsSheet: View {
         }
         .padding(20)
         .frame(width: 280)
+    }
+}
+
+private struct PanelBackgroundView: View {
+    let opacity: Double
+    let mode: PanelBackgroundMode
+
+    var body: some View {
+        Group {
+            switch mode {
+            case .standard:
+                LinearGradient(
+                    colors: [
+                        Color(nsColor: .windowBackgroundColor).opacity(opacity),
+                        Color(nsColor: .underPageBackgroundColor).opacity(opacity * 0.96)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            case .glass:
+                ZStack {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(.ultraThinMaterial)
+
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.white.opacity(max(0.03, opacity * 0.06)))
+
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                }
+            }
+        }
     }
 }
 

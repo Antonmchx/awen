@@ -12,6 +12,11 @@ enum PlayerFrameStyle: String, Codable, CaseIterable {
     case thin
 }
 
+enum PanelBackgroundMode: String, Codable, CaseIterable {
+    case standard
+    case glass
+}
+
 struct SavedArtworkLink: Identifiable, Codable, Equatable, Hashable {
     let id: UUID
     var title: String
@@ -52,6 +57,7 @@ private struct PersistedLibrary: Codable {
     var currentArtwork: PersistedCurrentArtwork?
     var playerFrameStyle: PlayerFrameStyle?
     var controlPanelOpacity: Double?
+    var panelBackgroundMode: PanelBackgroundMode?
 }
 
 @MainActor
@@ -69,6 +75,7 @@ final class AppState: ObservableObject {
     @Published var playerFrameStyle: PlayerFrameStyle = .shell
     @Published var currentPageTitle: String = ""
     @Published var controlPanelOpacity: Double = 0.96
+    @Published var panelBackgroundMode: PanelBackgroundMode = .standard
 
     private let persistenceURL: URL
     private var securityScopedURL: URL?
@@ -453,6 +460,11 @@ final class AppState: ObservableObject {
         persistLibrary()
     }
 
+    func setPanelBackgroundMode(_ mode: PanelBackgroundMode) {
+        panelBackgroundMode = mode
+        persistLibrary()
+    }
+
     func loadLocalFile(_ url: URL) {
         stopAccessingSecurityScopeIfNeeded()
 
@@ -575,7 +587,8 @@ final class AppState: ObservableObject {
             selectedPlaylistID: selectedPlaylistID,
             currentArtwork: persistedCurrentArtwork(),
             playerFrameStyle: playerFrameStyle,
-            controlPanelOpacity: controlPanelOpacity
+            controlPanelOpacity: controlPanelOpacity,
+            panelBackgroundMode: panelBackgroundMode
         )
 
         do {
@@ -596,6 +609,7 @@ final class AppState: ObservableObject {
             selectedPlaylistID = payload.selectedPlaylistID ?? payload.playlists.first?.id
             playerFrameStyle = payload.playerFrameStyle ?? .shell
             controlPanelOpacity = payload.controlPanelOpacity ?? 0.96
+            panelBackgroundMode = payload.panelBackgroundMode ?? .standard
             syncPlaylistIntervalInput()
             restoreCurrentArtwork(from: payload.currentArtwork)
         } catch {
