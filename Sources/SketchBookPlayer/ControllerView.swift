@@ -340,6 +340,10 @@ struct PlaylistsWindowView: View {
                             appState.playNextPlaylistItem()
                         }
 
+                        PlainIconButton(systemName: "shuffle") {
+                            appState.shuffleSelectedPlaylistItems()
+                        }
+
                         PlainIconButton(systemName: "plus") {
                             isAddPlaylistItemPresented = true
                         }

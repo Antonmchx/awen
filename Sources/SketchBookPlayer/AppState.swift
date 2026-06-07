@@ -419,6 +419,28 @@ final class AppState: ObservableObject {
         playPlaylistItem(at: currentPlaylistIndex, in: playlist)
     }
 
+    func shuffleSelectedPlaylistItems() {
+        guard let selectedPlaylistID,
+              let playlistIndex = playlists.firstIndex(where: { $0.id == selectedPlaylistID }) else {
+            statusMessage = "Select a playlist first."
+            return
+        }
+
+        guard playlists[playlistIndex].items.count > 1 else {
+            statusMessage = "Need at least two items to shuffle."
+            return
+        }
+
+        playlists[playlistIndex].items.shuffle()
+        currentPlaylistIndex = 0
+        persistLibrary()
+        statusMessage = "Playlist items shuffled."
+
+        if isAutoplayEnabled {
+            restartAutoplayIfPossible()
+        }
+    }
+
     func setAutoplayEnabled(_ enabled: Bool) {
         isAutoplayEnabled = enabled
         enabled ? restartAutoplayIfPossible() : stopAutoplay()
